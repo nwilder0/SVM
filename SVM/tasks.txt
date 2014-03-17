@@ -1,0 +1,14 @@
+VCPU:
+	- Registers:
+		- a, b, c
+		- flags
+		- ip, sp
+	
+	- Instructions
+		- mov a #
+		- mov b #
+		- mov c #
+		- jmp +/-#
+		- int #
+		
+		- mov a 2 (print char in b to std out)

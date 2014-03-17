@@ -1,0 +1,33 @@
+mov b 72
+mov a 2
+int 1
+mov b 101
+mov a 2
+int 1
+mov b 108
+mov a 2
+int 1
+mov b 108
+mov a 2
+int 1
+mov b 111
+mov a 2
+int 1
+mov b 32
+mov a 2
+int 1
+mov b 87
+mov a 2
+int 1
+mov b 111
+mov a 2
+int 1
+mov b 114
+mov a 2
+int 1
+mov b 108
+mov a 2
+int 1
+mov b 100
+mov a 2
+int 1
