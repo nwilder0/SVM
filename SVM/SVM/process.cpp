@@ -22,28 +22,23 @@ namespace vm
         return priority < anotherProcess.priority;
     }
 
-	bool Process::chgState(States newState) {
+	bool Process::ChgState(States newState) {
 
+		state = newState;
 		if(newState == Ready && state == Running) {
-			loadState();
+			// anything else to do 
 		} else if (state == Running && newState == Ready) {
-			saveState();
+			// anything else to do
 		} else if (state == Ready && newState == Blocked) {
-
+			// anything else to do
 		} else if (state == Running && newState == Blocked) {
-			saveState();
+			// anything else to do
 		} else if (state == Blocked && newState == Ready) {
-
+			// anything else to do
 		}
 		// load/unload state into PCB
 		return true;
 	}
 
-	bool Process::saveState() {
-		return false;
-	}
 
-	bool Process::loadState() {
-		return false;
-	}
 }

@@ -48,18 +48,40 @@ int main(int argc, char *argv[])
             scheduler = Kernel::RoundRobin;
         } else if (arg == "/scheduler:priority") {
             scheduler = Kernel::Priority;
-        }
+        } else if (arg == "/scheduler:pqueue") {
+			scheduler = Kernel::PQueue;
+		} else {
+			std::cerr << "VM: Invalid scheduler type" << std::endl;
+		}
 
         std::vector<Memory::ram_type> processes;
+		std::vector<int> priorities;
+
         for (int i = 2; i < argc; ++i) {
-			Memory::ram_type *executable = LoadExecutable(argv[i]);
+			// read in filename and priority
+			std::string strFilename(argv[i]);
+			std::string strPArg(argv[i+1]);
+			int priority = 0;
+			if(strPArg.substr(0,3)=="/p:") {
+				std::string strPriority(strPArg.substr(3,std::string::npos));
+				// convert to int
+				try {
+					priority = std::stoi(strPriority);
+				} catch (int err) {
+					std::cerr << "Exe: Invalid priority for " << strFilename << std::endl;
+				}
+				i++;
+			}
+
+			Memory::ram_type *executable = LoadExecutable(strFilename);
 			if (executable) {
 				processes.push_back(*executable);
 				delete executable;
+				priorities.push_back(priority);
 			}
         }
 
-        Kernel kernel(scheduler, processes);
+        Kernel kernel(scheduler, processes, priorities);
     }
 
     return 0;

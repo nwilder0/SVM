@@ -13,13 +13,28 @@ namespace vm
 	// OS Kernel
     class Kernel
     {
-    public:
+    private:
+        static const unsigned int _MAX_CYCLES_BEFORE_PREEMPTION = 100;
+		static const unsigned int _MAX_PROCESS_PRIORITY = 99;
+		static const unsigned int _PRIORITY_QUEUE_COUNT = 5;
+		static const unsigned int _REALTIME_QUEUE = 4;
+
+        Process::process_id_type _last_issued_process_id;
+        Memory::ram_type::size_type _last_ram_position;
+
+        unsigned int _cycles_passed_after_preemption;
+        unsigned int _current_process_index;
+		int _last_process_index[_PRIORITY_QUEUE_COUNT];
+		int _current_queue, _switch_count;
+
+	public:
         enum Scheduler
         {
             FirstComeFirstServed,
             ShortestJob,
             RoundRobin,
-            Priority
+            Priority,
+			PQueue
         };
 
         typedef std::deque<Process> process_list_type;
@@ -29,24 +44,20 @@ namespace vm
 
         process_list_type processes;
         process_priorities_type priorities;
+		process_list_type pqueues[_PRIORITY_QUEUE_COUNT];
 
         Scheduler scheduler;
 
-        Kernel(Scheduler scheduler, std::vector<Memory::ram_type> executables_paths); // Kernel boot process (setup ISRs, create processes, etc.)
+        Kernel(Scheduler scheduler, std::vector<Memory::ram_type> executables_paths, std::vector<int> priorities); // Kernel boot process (setup ISRs, create processes, etc.)
         virtual ~Kernel();
 
-        void CreateProcess(Memory::ram_type &executable); // Creates a new PCB, places the executable image into memory
+        void CreateProcess(Memory::ram_type &executable, int priority); // Creates a new PCB, places the executable image into memory
 
-		void ExitProcess();
+		void ExitProcess(Process);
 
-    private:
-        static const unsigned int _MAX_CYCLES_BEFORE_PREEMPTION = 100;
+		void LoadProcess(Process);
+		void SaveProcess(Process);
 
-        Process::process_id_type _last_issued_process_id;
-        Memory::ram_type::size_type _last_ram_position;
-
-        unsigned int _cycles_passed_after_preemption;
-        process_list_type::size_type _current_process_index;
     };
 }
 

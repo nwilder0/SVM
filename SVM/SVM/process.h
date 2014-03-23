@@ -39,9 +39,7 @@ namespace vm
         virtual ~Process();
 
         bool operator<(const Process &anotherProcess) const;
-		bool chgState(States);
-		bool loadState();
-		bool saveState();
+		bool ChgState(States);
 
     };
 }
