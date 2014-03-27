@@ -31,3 +31,5 @@ int 1
 mov b 100
 mov a 2
 int 1
+mov a 0
+int 1

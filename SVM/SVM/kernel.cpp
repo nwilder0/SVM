@@ -13,8 +13,12 @@ namespace vm
           _last_issued_process_id(0),
           _last_ram_position(0),
           _current_process_index(0),
-          _cycles_passed_after_preemption(0)
+          _cycles_passed_after_preemption(0),
+		  _current_queue(_REALTIME_QUEUE)
     {
+		for(int i=0; i<_PRIORITY_QUEUE_COUNT; i++) {
+			pqueues[i] = process_list_type();
+		}
 		std::vector<int>::iterator it = priorities.begin();
         std::for_each(executables_paths.begin(), executables_paths.end(), [&](Memory::ram_type &executable) {
             CreateProcess(executable, *it);
@@ -33,13 +37,15 @@ namespace vm
 				
 				if(++_cycles_passed_after_preemption >= _MAX_CYCLES_BEFORE_PREEMPTION) {
 					if(processes.size() > 1) {
-						SaveProcess(processes[_current_process_index]);
+						std::cout << "RR: Preempt: save process " << _current_process_index << std::endl;
+						SaveProcess(&processes[_current_process_index]);
 						_current_process_index++;
 						if(_current_process_index >= processes.size()) {
 							_current_process_index=0;
 						}
 						_cycles_passed_after_preemption = 0;
-						LoadProcess(processes[_current_process_index]);
+						std::cout << "RR: preempt: load process " << _current_process_index << std::endl;
+						LoadProcess(&processes[_current_process_index]);
 					}
 				}
 			};
@@ -52,12 +58,14 @@ namespace vm
 					if(processes[_current_process_index].priority) processes[_current_process_index].priority--;
 
 					if(processes.size() > 1) {
-						SaveProcess(processes[_current_process_index]);
+						std::cout << "Priority: Preempt: save process " << _current_process_index << " with priority " << processes[_current_process_index].priority << std::endl;
+						SaveProcess(&processes[_current_process_index]);
 						_current_process_index++;
 						if(_current_process_index >= processes.size()) {
 							_current_process_index=0;
 						}
-						LoadProcess(processes[_current_process_index]);
+						std::cout << "Priority: Preempt: load process " << _current_process_index << " with priority " << processes[_current_process_index].priority << std::endl;
+						LoadProcess(&processes[_current_process_index]);
 					}
 				}
 
@@ -73,6 +81,8 @@ namespace vm
 						if(_current_queue != (pqueues[_current_queue][_current_process_index].priority / 20)) {
 							pqueues[pqueues[_current_queue][_current_process_index].priority / 20].push_back(pqueues[_current_queue][_current_process_index]);
 							pqueues[_current_queue].erase(pqueues[_current_queue].begin() + _current_process_index);
+							_current_queue = _current_queue--;
+							_current_process_index = pqueues[_current_queue].size()-1;
 						}
 					}
 
@@ -106,13 +116,16 @@ namespace vm
 					}
 					if(newIndex != -1) {
 						_last_process_index[_current_queue] = _current_process_index;
-						SaveProcess(pqueues[_current_queue][_current_process_index]);
+						//std::cout << "PQueue: _current_queue = " << _current_queue << " _current_process_index = " << _current_process_index << " pqueues = " << sizeof(pqueues) / sizeof(process_list_type) << " pqueues[current] = " << pqueues[_current_queue].size();
+						std::cout << "PQueue: Preempt: save process " << _current_process_index << " with priority " << pqueues[_current_queue][_current_process_index].priority << std::endl;
+						SaveProcess(&pqueues[_current_queue][_current_process_index]);
 
 						if(_current_queue != newQueue) _switch_count = newQueue;
 						
 						_current_queue = newQueue;
 						_current_process_index = newIndex;
-						LoadProcess(pqueues[_current_queue][_current_process_index]);
+						std::cout << "PQueue: Preempt: load process " << _current_process_index << " with priority " << pqueues[_current_queue][_current_process_index].priority << std::endl;
+							LoadProcess(&pqueues[_current_queue][_current_process_index]);
 					}
 					
 				}
@@ -130,7 +143,7 @@ namespace vm
 			}
 			switch(machine.cpu.registers.a) {
 			case 0:
-				ExitProcess(*p);
+				ExitProcess(p);
 			case 2:
 				char c = machine.cpu.registers.b;
 				std::cout << c;
@@ -177,11 +190,11 @@ namespace vm
 
 		} else if (scheduler == Priority) {
 
-			process_list_type::iterator itr = processes.begin();
-			
-			while((itr != processes.end()) || (process.priority <= (*itr).priority)) {
-				processes.insert(itr,process);
-			}
+			//process_list_type::iterator itr = processes.begin();
+			int size = processes.size();
+			int i;
+			for(i = 0; i<size && process.priority <= processes[i].priority; i++);
+			processes.insert(processes.begin()+i,process);
 
 		} else if (scheduler == PQueue) {
 			pqueues[process.priority / 20].push_back(process);
@@ -192,7 +205,7 @@ namespace vm
 
     }
 
-	void Kernel::ExitProcess(Process p) 
+	void Kernel::ExitProcess(Process *p) 
 	{
 		if(scheduler == Kernel::PQueue) 
 		{
@@ -200,7 +213,7 @@ namespace vm
 			int delIndex = -1, delQueue = -1, newIndex=-1, newQueue=-1;
 
 			// check if the current process is the one being remove (likely for all causes except kill)
-			if(&p == &pqueues[_current_queue][_current_process_index]) 
+			if(p == &pqueues[_current_queue][_current_process_index]) 
 			{
 				delIndex = _current_process_index;
 				delQueue = _current_queue;
@@ -208,7 +221,7 @@ namespace vm
 			// if not the current process then find it
 			for(int j = 0; j<_PRIORITY_QUEUE_COUNT && (delIndex == -1); j++) {
 				for(int i = 0; i<pqueues[j].size() && (delIndex == -1); i++) {
-					if(&p == &pqueues[j][i]) {
+					if(p == &pqueues[j][i]) {
 						delIndex = i;
 						delQueue = j;
 					}
@@ -216,7 +229,7 @@ namespace vm
 			}
 			// as long as the process to remove was found, then remove it from the process list
 			if(delIndex != -1) {
-				processes.erase(pqueues[delQueue].begin() + delIndex);
+				pqueues[delQueue].erase(pqueues[delQueue].begin() + delIndex);
 			}
 
 			// if we're not at the end of the processes queue then the old current index now points to the next process
@@ -231,22 +244,23 @@ namespace vm
 				}
 			}
 			if(newIndex != -1) {
-				LoadProcess(pqueues[newQueue][newIndex]);
+				LoadProcess(&pqueues[newQueue][newIndex]);
 			}
 
 		}
 		else 
 		{
+			std::cout << "Exit: exit process " << _current_process_index << std::endl;
 			// initialize to not found
 			int delIndex = -1;
 			// check if the current process is the one being remove (likely for all causes except kill)
-			if(&p == &processes[_current_process_index]) 
+			if(p == &processes[_current_process_index]) 
 			{
 				delIndex = _current_process_index;
 			}
 			// if not the current process then find it
 			for(int i = 0; i<processes.size() && (delIndex == -1); i++) {
-				if(&p == &processes[i]) {
+				if(p == &processes[i]) {
 					delIndex = i;
 				}
 			}
@@ -256,8 +270,8 @@ namespace vm
 			}
 
 			// if we're not at the end of the processes queue then the old current index now points to the next process
-			if(_current_process_index<=processes.size()) {
-				LoadProcess(processes[_current_process_index]);
+			if(_current_process_index<processes.size()) {
+				LoadProcess(&processes[_current_process_index]);
 			// otherwise go to beginning of the process queue
 			} else if(_current_process_index!=0) {
 				_current_process_index = 0;
@@ -267,17 +281,17 @@ namespace vm
 		}
 	}
 
-	void Kernel::SaveProcess(Process p) 
+	void Kernel::SaveProcess(Process *p) 
 	{
-		p.registers = machine.cpu.registers;
-		p.ChgState(Process::Ready);
+		p->registers = machine.cpu.registers;
+		p->ChgState(Process::Ready);
 		// what other elements need changing?
 	}
 
-	void Kernel::LoadProcess(Process p) 
+	void Kernel::LoadProcess(Process *p) 
 	{
-		machine.cpu.registers = p.registers;
-		p.ChgState(Process::Running);
+		machine.cpu.registers = p->registers;
+		p->ChgState(Process::Running);
 		// what other elements need changing?
 	}
 

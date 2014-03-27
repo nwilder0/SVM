@@ -28,7 +28,7 @@ namespace vm
             registers.c = data;
             registers.ip += 2;
         } else if (instruction == CPU::JMP_BASE_OPCODE) {
-            registers.ip += (data*2);
+            registers.ip += (data);
         } else if (instruction == CPU::INT_BASE_OPCODE) {
 			switch (data)
 			{

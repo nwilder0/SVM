@@ -53,10 +53,10 @@ namespace vm
 
         void CreateProcess(Memory::ram_type &executable, int priority); // Creates a new PCB, places the executable image into memory
 
-		void ExitProcess(Process);
+		void ExitProcess(Process *p);
 
-		void LoadProcess(Process);
-		void SaveProcess(Process);
+		void LoadProcess(Process *p);
+		void SaveProcess(Process *p);
 
     };
 }
